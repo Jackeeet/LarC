@@ -8,6 +8,8 @@ import {
   toString
 } from './scanner';
 
+import {YYParser} from './parser';
+
 export const scan = (source: string) => {
   let scanner = initScanner(source);
   let token: Token | null = null;
@@ -29,4 +31,14 @@ export const scan = (source: string) => {
   tokens.forEach(t => console.log(toString(t)));
 };
 
-scan("N = \\x.x \n F = N N");
+// scan("N = \\x.x \n F = N N");
+
+const parse = (source: string) => {
+  const symTable = {};
+  const parser = new YYParser(source, symTable);
+
+  const success = parser.parse();
+  console.log(success);
+}
+
+parse("let N = \\x.x \n eval \\y.y \n let F = N N");

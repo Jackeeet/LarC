@@ -6,6 +6,8 @@ export enum TokenKind {
   RBracket = "rBracket",
   Identifier = "identifier",
   Name = "name",
+  Let = "let",
+  Eval = "eval",
   EOF = "EOF",
   ERR = "ERR"
 }
@@ -27,23 +29,39 @@ export type Scanner = {
 
 const eof = '$';
 
-const newToken = (kind: TokenKind, scanner: Scanner) => {
-  let value: string | null = null;
-  let pos: number = kind === TokenKind.EOF ? scanner.pos : scanner.pos - 1;
+const allLowercase = (str: string) => {
+  for (let i = 0; i < str.length; i++) {
+    if (!isLowercase(str[i])) 
+      return false;
+  }
 
-  if (kind === TokenKind.Identifier) {
-    const start = scanner.tokenStart;
-    const end = scanner.index;
-    value = scanner.source.slice(start, end);
-    pos = scanner.pos - value.length;  
-  } 
+  return true;
+}
+
+const newStringValueToken = (scanner: Scanner) => {
+  const start = scanner.tokenStart;
+  const end = scanner.index;
+  const value = scanner.source.slice(start, end);
+
+  let kind = TokenKind.Identifier;
+  if (value === "let")
+    kind = TokenKind.Let;
+  else if (value === "eval")
+    kind = TokenKind.Eval;
+  else if (allLowercase(value))
+    kind = TokenKind.Name;
 
   return { 
     kind: kind, 
     line: scanner.line, 
-    pos: pos, 
+    pos: scanner.pos - value.length, 
     value: value
   };
+}
+
+const newToken = (kind: TokenKind, scanner: Scanner) => {
+  const pos: number = kind === TokenKind.EOF ? scanner.pos : scanner.pos - 1;
+  return { kind: kind, line: scanner.line, pos: pos, value: null };
 };
 
 export const toString = (token: Token) => {
@@ -72,13 +90,24 @@ const isDigit = (ch: string) => {
   return (code >= 48 && code <= 57);
 };
 
-const isAlpha = (ch: string) => {
+const isUppercase = (ch: string) => {  
   if (ch.length > 1)
     throw new Error('Not a character: ' + ch);
   
   const code = ch.charCodeAt(0);
-  return (code >= 65 && code <= 90) 
-      || (code >= 97 && code <= 122);
+  return (code >= 65 && code <= 90);
+};
+
+const isLowercase = (ch: string) => {
+  if (ch.length > 1)
+    throw new Error('Not a character: ' + ch);
+  
+  const code = ch.charCodeAt(0);
+  return (code >= 97 && code <= 122); 
+};
+
+const isIdentifierChar = (ch: string) => {
+  return isUppercase(ch) || isDigit(ch) || ch === "_";
 };
 
 const peek = (scanner: Scanner) => {
@@ -107,12 +136,24 @@ export const advance = (scanner: Scanner) => {
 
 const identifier = (scanner: Scanner) => {
   let ch = '';
-  while (!isEnd(scanner) && (isAlpha(peek(scanner)) || isDigit(peek(scanner)))) {
+  while (!isEnd(scanner) && isIdentifierChar(peek(scanner))) {
     ({ch, scanner} = advance(scanner));
   }
 
   return {
-    token: newToken(TokenKind.Identifier, scanner),
+    token: newStringValueToken(scanner),
+    scanner: { ...scanner, tokenStart: scanner.index }
+  };
+};
+
+const name = (scanner: Scanner) => {
+  let ch = '';
+  while (!isEnd(scanner) && isLowercase(peek(scanner))) {
+    ({ch, scanner} = advance(scanner));
+  }
+
+  return {
+    token: newStringValueToken(scanner),
     scanner: { ...scanner, tokenStart: scanner.index }
   };
 };
@@ -153,8 +194,12 @@ export const scanToken = (scanner: Scanner) => {
   let ch = '';
   ({ch, scanner} = advance(scanner));
 
-  if (isAlpha(ch)) {
+  if (isDigit(ch) || isUppercase(ch)) {
     return identifier(scanner);
+  }
+
+  if (isLowercase(ch)) {
+    return name(scanner);
   }
 
   let token: Token | null = null;
@@ -174,11 +219,7 @@ export const scanToken = (scanner: Scanner) => {
     case ')': 
       token = newToken(TokenKind.RBracket, scanner);
       break;
-    case '!': 
-      token = newToken(TokenKind.Application, scanner);
-      break;
     default:
-      // unreachable
       return {
         token: newToken(TokenKind.ERR, scanner), 
         scanner: scanner
