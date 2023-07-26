@@ -39,6 +39,8 @@ const parse = (source: string) => {
 
   const success = parser.parse();
   console.log(success);
+  console.log(parser.instructions);
+  console.log(symTable);
 }
 
 parse("let N = \\x.x \n eval \\y.y \n let F = N N");

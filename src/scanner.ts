@@ -8,6 +8,7 @@ export enum TokenKind {
   Name = "name",
   Let = "let",
   Eval = "eval",
+  Start = "start",
   EOF = "EOF",
   ERR = "ERR"
 }
