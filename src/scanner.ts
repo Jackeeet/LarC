@@ -1,24 +1,4 @@
-export enum TokenKind {
-  Equals = "equals",
-  Lambda = "lambda",
-  Dot= "dot",
-  LBracket = "lBracket",
-  RBracket = "rBracket",
-  Identifier = "identifier",
-  Name = "name",
-  Let = "let",
-  Eval = "eval",
-  Start = "start",
-  EOF = "EOF",
-  ERR = "ERR"
-}
-
-export type Token = {
-  kind: TokenKind;
-  line: number;
-  pos: number;
-  value: string | null;
-}
+import {TokenKind, Token, toString} from './token';
 
 export type Scanner = {
   source: string;
@@ -32,12 +12,11 @@ const eof = '$';
 
 const allLowercase = (str: string) => {
   for (let i = 0; i < str.length; i++) {
-    if (!isLowercase(str[i])) 
-      return false;
+    if (!isLowercase(str[i])) return false;
   }
 
   return true;
-}
+};
 
 const newStringValueToken = (scanner: Scanner) => {
   const start = scanner.tokenStart;
@@ -45,37 +24,30 @@ const newStringValueToken = (scanner: Scanner) => {
   const value = scanner.source.slice(start, end);
 
   let kind = TokenKind.Identifier;
-  if (value === "let")
-    kind = TokenKind.Let;
-  else if (value === "eval")
-    kind = TokenKind.Eval;
-  else if (allLowercase(value))
-    kind = TokenKind.Name;
+  if (value === 'let') kind = TokenKind.Let;
+  else if (value === 'eval') kind = TokenKind.Eval;
+  else if (allLowercase(value)) kind = TokenKind.Name;
 
-  return { 
-    kind: kind, 
-    line: scanner.line, 
-    pos: scanner.pos - value.length, 
-    value: value
+  return {
+    kind: kind,
+    line: scanner.line,
+    pos: scanner.pos - value.length,
+    value: value,
   };
-}
+};
 
 const newToken = (kind: TokenKind, scanner: Scanner) => {
   const pos: number = kind === TokenKind.EOF ? scanner.pos : scanner.pos - 1;
-  return { kind: kind, line: scanner.line, pos: pos, value: null };
-};
-
-export const toString = (token: Token) => {
-  return `[${token.line}:${token.pos}] ${token.kind}${token.value ? ': ' + token.value : ''}`;
+  return {kind: kind, line: scanner.line, pos: pos, value: null};
 };
 
 export const initScanner = (source: string) => {
-  return { 
-    source: source, 
-    index: 0, 
+  return {
+    source: source,
+    index: 0,
     tokenStart: 0,
-    line: 1, 
-    pos: 1 
+    line: 1,
+    pos: 1,
   };
 };
 
@@ -84,31 +56,28 @@ const isEnd = (scanner: Scanner) => {
 };
 
 const isDigit = (ch: string) => {
-  if (ch.length > 1)
-    throw new Error('Not a character: ' + ch);
-  
+  if (ch.length > 1) throw new Error('Not a character: ' + ch);
+
   const code = ch.charCodeAt(0);
-  return (code >= 48 && code <= 57);
+  return code >= 48 && code <= 57;
 };
 
-const isUppercase = (ch: string) => {  
-  if (ch.length > 1)
-    throw new Error('Not a character: ' + ch);
-  
+const isUppercase = (ch: string) => {
+  if (ch.length > 1) throw new Error('Not a character: ' + ch);
+
   const code = ch.charCodeAt(0);
-  return (code >= 65 && code <= 90);
+  return code >= 65 && code <= 90;
 };
 
 const isLowercase = (ch: string) => {
-  if (ch.length > 1)
-    throw new Error('Not a character: ' + ch);
-  
+  if (ch.length > 1) throw new Error('Not a character: ' + ch);
+
   const code = ch.charCodeAt(0);
-  return (code >= 97 && code <= 122); 
+  return code >= 97 && code <= 122;
 };
 
 const isIdentifierChar = (ch: string) => {
-  return isUppercase(ch) || isDigit(ch) || ch === "_";
+  return isUppercase(ch) || isDigit(ch) || ch === '_';
 };
 
 const peek = (scanner: Scanner) => {
@@ -116,22 +85,21 @@ const peek = (scanner: Scanner) => {
 };
 
 const peekNext = (scanner: Scanner) => {
-  return !isEnd(scanner) ? 
-    scanner.source[scanner.index + 1] : eof;
+  return !isEnd(scanner) ? scanner.source[scanner.index + 1] : eof;
 };
 
 export const advance = (scanner: Scanner) => {
   const ch = peek(scanner);
   const newLine = ch === '\n';
-  return { 
-    ch: ch, 
+  return {
+    ch: ch,
     scanner: {
       source: scanner.source,
       index: scanner.index + 1,
       tokenStart: scanner.tokenStart,
-      line: scanner.line + (newLine ? 1 : 0), 
-      pos: newLine? 1 : scanner.pos + 1
-    }
+      line: scanner.line + (newLine ? 1 : 0),
+      pos: newLine ? 1 : scanner.pos + 1,
+    },
   };
 };
 
@@ -143,7 +111,7 @@ const identifier = (scanner: Scanner) => {
 
   return {
     token: newStringValueToken(scanner),
-    scanner: { ...scanner, tokenStart: scanner.index }
+    scanner: {...scanner, tokenStart: scanner.index},
   };
 };
 
@@ -155,7 +123,7 @@ const name = (scanner: Scanner) => {
 
   return {
     token: newStringValueToken(scanner),
-    scanner: { ...scanner, tokenStart: scanner.index }
+    scanner: {...scanner, tokenStart: scanner.index},
   };
 };
 
@@ -177,7 +145,7 @@ const skipBlanks = (scanner: Scanner) => {
           return {...scanner, tokenStart: scanner.index};
         }
         break;
-      default: 
+      default:
         return {...scanner, tokenStart: scanner.index};
     }
   }
@@ -185,14 +153,14 @@ const skipBlanks = (scanner: Scanner) => {
 
 export const scanToken = (scanner: Scanner) => {
   if (isEnd(scanner)) {
-    return { 
+    return {
       token: newToken(TokenKind.EOF, scanner),
-      scanner: scanner
-    }; 
+      scanner: scanner,
+    };
   }
 
   scanner = skipBlanks(scanner);
-  let ch = '';
+  let ch: string;
   ({ch, scanner} = advance(scanner));
 
   if (isDigit(ch) || isUppercase(ch)) {
@@ -204,29 +172,28 @@ export const scanToken = (scanner: Scanner) => {
   }
 
   let token: Token | null = null;
-  switch(ch) {
-    case '\\': 
+  switch (ch) {
+    case '\\':
       token = newToken(TokenKind.Lambda, scanner);
       break;
-    case '.': 
+    case '.':
       token = newToken(TokenKind.Dot, scanner);
       break;
-    case '=': 
+    case '=':
       token = newToken(TokenKind.Equals, scanner);
       break;
-    case '(': 
+    case '(':
       token = newToken(TokenKind.LBracket, scanner);
       break;
-    case ')': 
+    case ')':
       token = newToken(TokenKind.RBracket, scanner);
       break;
     default:
       return {
-        token: newToken(TokenKind.ERR, scanner), 
-        scanner: scanner
+        token: newToken(TokenKind.ERR, scanner),
+        scanner: scanner,
       };
   }
 
   return {token: token, scanner: scanner};
 };
-
