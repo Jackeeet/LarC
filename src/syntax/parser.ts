@@ -1,5 +1,5 @@
 import {Scanner, initScanner, scanToken} from './scanner';
-import {Token, TokenKind, startToken} from './token';
+import {TokenKind, startToken} from './token';
 
 enum ActionResult {
   Accept = 0,
@@ -13,24 +13,21 @@ enum ActionResult {
   Return = 8,
 }
 
-type Identifier = string;
-type Variable = string;
+export type InstructionPointer = string;
+const toInstPointer = (n: number) => `i${n}`;
 
-type Func = {bound: Variable; body: Expression};
-type Application = {func: Expression; applicand: Expression};
+export type Identifier = string;
+export type Variable = string;
+export type Expression = Identifier | Variable;
 
-type Expression = Identifier | Variable | Func | Application;
-
-type Instruction = {
-  op: 'assign' | 'eval';
-  arg1: Expression;
-  arg2: Expression | null;
+export type Instruction = {
+  op: 'assign' | 'eval' | 'apply' | 'func';
+  arg1: Expression | InstructionPointer;
+  arg2: Expression | InstructionPointer | null;
 };
 
-type EvalAddress = number;
-
 export class YYParser {
-  public symTable: {[key: Identifier]: Expression | EvalAddress};
+  public symTable: {[key: Identifier]: Expression | InstructionPointer};
   public instructions: Instruction[];
 
   private _scanner: Scanner;
@@ -38,7 +35,7 @@ export class YYParser {
 
   constructor(
     source: string,
-    symTable: {[key: Identifier]: Expression | EvalAddress}
+    symTable: {[key: Identifier]: Expression | InstructionPointer}
   ) {
     this._scanner = initScanner(source);
     this.symTable = symTable;
@@ -51,81 +48,91 @@ export class YYParser {
     return token;
   }
 
-  private _declareGlobal(identifier: Token, expr: Expression) {
-    const id = identifier.value;
-    if (id === null) throw new Error('Unreachable: null identifier');
+  private _declareGlobal(identifier: Identifier, expr: Expression) {
+    if (identifier === null) throw new Error('Unreachable: null identifier');
 
-    this.symTable[id] = expr;
-    this.instructions.push({op: 'assign', arg1: expr, arg2: id});
-
-    console.log('> declared identifier ' + id);
+    this.symTable[identifier] = expr;
+    this.instructions.push({op: 'assign', arg1: expr, arg2: identifier});
   }
 
-  private _getGlobal(identifier: Token) {
-    const id = identifier.value;
-    if (id === null) throw new Error('null identifier');
+  private _makeFunc(bound: Variable, body: Expression): InstructionPointer {
+    if (bound === null) throw new Error('Unreachable: null bound value');
 
-    return this.symTable.hasOwnProperty(id) ? this.symTable[id] : null;
+    const ptr = toInstPointer(this.instructions.length);
+    this.instructions.push({op: 'func', arg1: bound, arg2: body});
+    return ptr;
   }
 
-  private _makeFunc(bound: Token, body: Expression): Func {
-    if (bound.value === null) throw new Error('Unreachable: null bound value');
-    return {bound: bound.value, body: body};
+  private _makeApplication(
+    applied: Expression,
+    applicand: Expression
+  ): InstructionPointer {
+    const ptr = toInstPointer(this.instructions.length);
+    this.instructions.push({op: 'apply', arg1: applied, arg2: applicand});
+    return ptr;
   }
 
-  private _makeApplication(expr1: Expression, expr2: Expression): Application {
-    return {func: expr1, applicand: expr2};
-  }
-
-  private _declareEval(expr: Expression): EvalAddress {
-    const evalAddress = this.instructions.length;
+  private _declareEval(expr: Expression): InstructionPointer {
+    const ptr = toInstPointer(this.instructions.length);
     this.instructions.push({op: 'eval', arg1: expr, arg2: null});
-    return evalAddress;
+    return ptr;
   }
 
   private _action(yyn: number, stack: YYStack, len: number) {
-    let val: any = stack.valueAt(len > 0 ? len - 1 : 0);
+    let val: Expression | InstructionPointer | null = stack.valueAt(
+      len > 0 ? len - 1 : 0
+    );
     switch (yyn) {
       case 5:
-        // declaration : LET IDENTIFIER EQUALS expression
-        this._declareGlobal(stack.valueAt(2), stack.valueAt(0));
+      case 6: {
+        // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
+        const identifier = <Identifier>stack.valueAt(2);
+        if (identifier === null)
+          throw new Error('Unreachable: null identifier');
+        const expression = stack.valueAt(0);
+        if (expression === null)
+          throw new Error('Unreachable: null expression in assignment');
+        this._declareGlobal(identifier, expression);
         break;
-      case 6:
-        // declaration : LET IDENTIFIER EQUALS evaluation
-        this._declareGlobal(stack.valueAt(2), stack.valueAt(0));
-        break;
-      case 7:
+      }
+      case 7: {
         // evaluation : EVAL expression
-        val = this._declareEval(stack.valueAt(0));
+        const expression = stack.valueAt(0);
+        if (expression === null)
+          throw new Error('Unreachable: null expression in eval');
+        val = this._declareEval(expression);
         break;
-      case 8:
-        // expression : IDENTIFIER
-        val = this._getGlobal(stack.valueAt(0));
-        break;
-      case 9:
-      case 10:
-      case 11:
-        // expression : NAME | function | application
-        val = stack.valueAt(0);
-        break;
+      }
       case 12:
         // expression : LBRACKET expression RBRACKET
         val = stack.valueAt(1);
         break;
-      case 13:
+      case 13: {
         // function : LAMBDA NAME DOT expression
-        val = this._makeFunc(stack.valueAt(2), stack.valueAt(0));
+        const variable = <Variable>stack.valueAt(2);
+        if (variable === null)
+          throw new Error('Unreachable: null variable name');
+        const expression = stack.valueAt(0);
+        if (expression === null)
+          throw new Error('Unreachable: null expression in function body');
+        val = this._makeFunc(variable, expression);
         break;
-      case 14:
+      }
+      case 14: {
         // application : expression expression
-        val = this._makeApplication(stack.valueAt(1), stack.valueAt(0));
+        const applied = stack.valueAt(1);
+        if (applied === null)
+          throw new Error('Unreachable: null applied expression');
+        const applicand = stack.valueAt(0);
+        if (applicand === null) throw new Error('Unreachable: null applicand');
+        val = this._makeApplication(applied, applicand);
         break;
+      }
       default:
         break;
     }
 
     stack.pop(len);
-    len = 0;
 
     // shift result of the reduction
     yyn = this._r1[yyn];
@@ -133,7 +140,7 @@ export class YYParser {
     const condition =
       0 <= state &&
       state <= this._last &&
-      this._check[state] == stack.stateAt(0);
+      this._check[state] === stack.stateAt(0);
     state = condition ? this._table[state] : this._defgoto[yyn - this._nTokens];
     stack.push(state, val);
     return ActionResult.NewState;
@@ -149,7 +156,7 @@ export class YYParser {
     const stack = new YYStack();
     this._errStatus = 0;
 
-    stack.push(state, token);
+    stack.push(state, token.value);
     let label = ActionResult.NewState;
     while (true) {
       switch (label) {
@@ -183,7 +190,7 @@ export class YYParser {
           if (yyn < 0 || this._last < yyn || this._check[yyn] !== tokenNumber) {
             label = ActionResult.Default;
           } else if ((yyn = this._table[yyn]) <= 0) {
-            if (yyn === 0 || yyn == this._table_ninf) {
+            if (yyn === 0 || yyn === this._table_ninf) {
               label = ActionResult.Fail;
             } else {
               yyn = -yyn;
@@ -196,7 +203,7 @@ export class YYParser {
             }
 
             state = yyn;
-            stack.push(state, token);
+            stack.push(state, token.value);
             label = ActionResult.NewState;
           }
           break;
@@ -225,12 +232,6 @@ export class YYParser {
 
           label = ActionResult.ErrLab1;
           break;
-        //        case ActionResult.Err:
-        //          stack.pop(len);
-        //          len = 0;
-        //          state = stack.stateAt(0);
-        //          label = ActionResult.ErrLab1;
-        //          break;
         case ActionResult.ErrLab1:
           this._errStatus = 3;
           while (true) {
@@ -254,7 +255,7 @@ export class YYParser {
           }
 
           state = yyn;
-          stack.push(yyn, token);
+          stack.push(yyn, token.value);
           label = ActionResult.NewState;
           break;
         case ActionResult.Accept:
@@ -290,30 +291,11 @@ export class YYParser {
     3, 4, 5, -1, -1, 8,
   ];
 
-  //  private readonly _stos = [
-  //    0, 13, 0, 10, 11, 14, 15, 4, 3, 4, 5, 8, 16, 17, 18, 7, 3, 16, 16, 15, 16,
-  //    6, 9, 16,
-  //  ];
-
   private readonly _r1 = [
     0, 12, 13, 13, 13, 14, 14, 15, 16, 16, 16, 16, 16, 17, 18,
   ];
 
   private readonly _r2 = [0, 2, 2, 2, 0, 4, 4, 2, 1, 1, 1, 1, 3, 4, 2];
-
-  //  private readonly _rhs = [
-  //    13, 0, -1, 13, 14, -1, 13, 15, -1, -1, 10, 4, 7, 16, -1, 10, 4, 7, 15, -1,
-  //    11, 16, -1, 4, -1, 3, -1, 17, -1, 18, -1, 8, 16, 9, -1, 5, 3, 6, 16, -1, 16,
-  //    16, -1,
-  //  ];
-  //
-  //  private readonly _prhs = [
-  //    0, 0, 3, 6, 9, 10, 15, 20, 23, 25, 27, 29, 31, 35, 40,
-  //  ];
-  //
-  //  private readonly _rline = [
-  //    0, 15, 15, 16, 17, 20, 21, 24, 27, 28, 29, 30, 31, 34, 37,
-  //  ];
 
   private readonly _translateTable = [
     0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -336,11 +318,9 @@ export class YYParser {
   }
 
   private readonly _last = 28;
-  //  private readonly _nnts = 7;
   private readonly _empty = -2;
   private readonly _final = 2;
   private readonly _tError = 1;
-  //  private readonly _errCode = 256;
   private readonly _nTokens = 12;
 
   private readonly _maxUserTokenNumber = 266;
@@ -362,17 +342,17 @@ export class YYParser {
 
 class YYStack {
   private _stateStack: number[] = [];
-  private _valueStack: any[] = [];
+  private _valueStack: (string | null)[] = [];
 
   public height = -1;
 
-  public push(state: number, value: any) {
+  public push(state: number, value: string | null) {
     this._stateStack.push(state);
     this._valueStack.push(value);
     this.height += 1;
   }
 
-  public pop(n: number = 1) {
+  public pop(n = 1) {
     for (let i = 0; i < n; i++) {
       this._stateStack.pop();
       this._valueStack.pop();

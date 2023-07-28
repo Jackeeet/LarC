@@ -4,7 +4,7 @@ export enum TokenKind {
   Dot = 'dot',
   LBracket = 'lBracket',
   RBracket = 'rBracket',
-  Identifier = 'identifier',  // uppercase function name
+  Identifier = 'identifier', // uppercase function name
   Name = 'name', // lowercase variable name
   Let = 'let',
   Eval = 'eval',

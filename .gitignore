@@ -39,7 +39,8 @@ lib/*.js
 test/*.js
 *.map
 
-src/*.js
+*.js
+*.java
 
 docs
 bundle.js
