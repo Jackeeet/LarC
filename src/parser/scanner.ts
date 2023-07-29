@@ -188,6 +188,9 @@ export const scanToken = (scanner: Scanner) => {
     case ')':
       token = newToken(TokenKind.RBracket, scanner);
       break;
+    case '<':
+      token = newToken(TokenKind.Apply, scanner);
+      break;
     default:
       return {
         token: newToken(TokenKind.ERR, scanner),

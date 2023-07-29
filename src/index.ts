@@ -4,7 +4,7 @@ import {
   Identifier,
   Expression,
   InstructionPointer,
-} from './syntax/parser';
+} from './parser/parser';
 
 const parse = (source: string) => {
   const symTable = {};

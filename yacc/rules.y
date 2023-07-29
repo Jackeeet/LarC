@@ -7,13 +7,16 @@
 %token RBRACKET
 %token LET 
 %token EVAL
+%token APPLY 
+
+%left APPLY
 
 %language "Java"
 
 %%
 
-program     : program declaration {addDecl($2);}
-            | program evaluation {addEval($2);}
+program     : program declaration
+            | program evaluation
             |
             ; 
 
@@ -24,54 +27,26 @@ declaration : LET IDENTIFIER EQUALS expression {declareVar($2, $4);}
 evaluation  : EVAL expression {$$ = evaluate($2);}
             ;
 
-expression  : IDENTIFIER {$$ = lookUp($1);}
-            | NAME {$$ = handleLocal($1);}
-            | function {handleFunc($1);}
-            | application {handleApplication($1)}
-            | LBRACKET expression RBRACKET {$$ = handleGrouping($2);}
+expression  : IDENTIFIER  
+            | NAME 
+            | function 
+            | application 
+            | LBRACKET expression RBRACKET {$$ = $2;}
             ;
 
 function    : LAMBDA NAME DOT expression {makeFunc($2, $4);}
             ;
 
-application : expression expression {$$ = apply($1, $2);}
+application : expression APPLY expression {$$ = apply($1, $3);}
             ;
     
 %%
 
-evaluate(expr) {
-    
-}
+evaluate(expr) {}
 
-addDecl(decl) {
-    
-}
+declareVar(id, expr) {}
 
-addEval(e) {
-    
-}
+makeFunc(bound, expr) {}
 
-declareVar(id, expr) {
-    
-}
-
-lookUp(name) {
-    
-}
-
-handleLocal(local) {}
-
-handleFunc(func) {}
-
-handleApplication {}
-
-handleGrouping {}
-
-makeFunc(bound, expr) {
-    
-}
-
-apply(left, right) {
-    
-}
+apply(left, right) {}
 

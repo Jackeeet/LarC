@@ -119,8 +119,8 @@ export class YYParser {
         break;
       }
       case 14: {
-        // application : expression expression
-        const applied = stack.valueAt(1);
+        // application : expression APPLY expression
+        const applied = stack.valueAt(2);
         if (applied === null)
           throw new Error('Unreachable: null applied expression');
         const applicand = stack.valueAt(0);
@@ -266,49 +266,68 @@ export class YYParser {
     }
   }
 
-  private readonly _pact_ninf = -5;
+  private readonly _pact_ninf = -10;
   private readonly _pact = [
-    -5, 2, -5, -3, 20, -5, -5, -1, -5, -5, 7, 20, 20, -5, -5, 11, 12, 0, 20, -5,
-    20, 20, -5, 20,
+    -10,  0, -10,  -1,  19, -10, -10, -2, -10, -10, 
+      4, 19,  -4, -10, -10,  10,  11, -8,  19, -10, 
+     -4, 19, -10, -10,  -4
   ];
 
   private readonly _defact = [
-    4, 0, 1, 0, 0, 2, 3, 0, 9, 8, 0, 0, 7, 10, 11, 0, 0, 0, 14, 6, 5, 0, 12, 13,
+    4, 0, 1, 0, 0, 2, 3, 0, 9, 8, 0, 0, 7, 10, 11, 0, 0, 0, 0, 6, 5, 0, 12, 14, 13,
   ];
 
-  private readonly _pgoto = [-5, -5, -5, 5, -4, -5, -5];
+  private readonly _pgoto = [-10, -10, -10, 1, -9, -10, -10];
 
-  private readonly _defgoto = [-1, 1, 5, 6, 18, 13, 14];
+  private readonly _defgoto = [-1, 1, 5, 6, 12, 13, 14];
 
   private readonly _table_ninf = -1;
   private readonly _table = [
-    12, 7, 2, 8, 9, 10, 15, 17, 11, 22, 16, 20, 3, 4, 8, 9, 10, 23, 21, 11, 19,
-    0, 4, 8, 9, 10, 0, 0, 11,
+    2, 22, 17, 7, 18, 15, 20, 16, 18, 23,
+    3,  4, 24, 8,  9, 10, 19, 21, 11,  0,
+    0,  4,  8, 9, 10,  0,  0, 11,
   ];
 
   private readonly _check = [
-    4, 4, 0, 3, 4, 5, 7, 11, 8, 9, 3, 15, 10, 11, 3, 4, 5, 21, 6, 8, 15, -1, 11,
-    3, 4, 5, -1, -1, 8,
+     0,  9, 11, 4, 12,  7, 15, 3, 12, 18, 
+    10, 11, 21, 3,  4,  5, 15, 6,  8, -1,
+    -1, 11,  3, 4,  5, -1, -1, 8,
   ];
 
   private readonly _r1 = [
-    0, 12, 13, 13, 13, 14, 14, 15, 16, 16, 16, 16, 16, 17, 18,
+    0, 13, 14, 14, 14, 15, 15, 16, 17, 17, 17, 17, 17, 18, 19,
   ];
 
-  private readonly _r2 = [0, 2, 2, 2, 0, 4, 4, 2, 1, 1, 1, 1, 3, 4, 2];
+  private readonly _r2 = [0, 2, 2, 2, 0, 4, 4, 2, 1, 1, 1, 1, 3, 4, 3];
 
   private readonly _translateTable = [
-    0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+    0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 1, 2, 3, 4, 
+    5, 6, 7, 8, 9, 10, 11, 12
   ];
 
   private _translate(tokenNumber: number) {
@@ -317,13 +336,13 @@ export class YYParser {
     return this._undefinedTokenNumber;
   }
 
-  private readonly _last = 28;
+  private readonly _last = 27;
   private readonly _empty = -2;
   private readonly _final = 2;
   private readonly _tError = 1;
-  private readonly _nTokens = 12;
+  private readonly _nTokens = 13;
 
-  private readonly _maxUserTokenNumber = 266;
+  private readonly _maxUserTokenNumber = 267;
   private readonly _undefinedTokenNumber = 2;
 
   private readonly _tokenKindToNum: {[key: string]: number} = {
@@ -337,6 +356,7 @@ export class YYParser {
     rBracket: 264,
     let: 265,
     eval: 266,
+    apply: 267
   };
 }
 

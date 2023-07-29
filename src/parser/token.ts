@@ -8,6 +8,7 @@ export enum TokenKind {
   Name = 'name', // lowercase variable name
   Let = 'let',
   Eval = 'eval',
+  Apply = 'apply',
   Start = 'start', // default value for parse() start
   EOF = 'EOF',
   ERR = 'ERR',
