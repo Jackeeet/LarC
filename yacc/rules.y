@@ -16,7 +16,7 @@
 %%
 
 program     : program declaration
-            | program evaluation
+            | program evaluation { print($2); }
             |
             ; 
 
@@ -50,3 +50,4 @@ makeFunc(bound, expr) {}
 
 apply(left, right) {}
 
+print(value) {}

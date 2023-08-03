@@ -21,7 +21,7 @@ export type Variable = string;
 export type Expression = Identifier | Variable;
 
 export type Instruction = {
-  op: 'assign' | 'eval' | 'apply' | 'func';
+  op: 'assign' | 'eval' | 'print' | 'apply' | 'func';
   arg1: Expression | InstructionPointer;
   arg2: Expression | InstructionPointer | null;
 };
@@ -78,11 +78,22 @@ export class YYParser {
     return ptr;
   }
 
+  private _handlePrint(value: Expression) {
+    this.instructions.push({op: 'print', arg1: value, arg2: null});
+  }
+
   private _action(yyn: number, stack: YYStack, len: number) {
     let val: Expression | InstructionPointer | null = stack.valueAt(
       len > 0 ? len - 1 : 0
     );
     switch (yyn) {
+      case 3: {
+        const value = <Expression>stack.valueAt(0);
+        if (value === null)
+          throw new Error('Unreachable: printing null value');
+        this._handlePrint(value);
+        break;
+      }
       case 5:
       case 6: {
         // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
@@ -268,13 +279,13 @@ export class YYParser {
 
   private readonly _pact_ninf = -10;
   private readonly _pact = [
-    -10,  0, -10,  -1,  19, -10, -10, -2, -10, -10, 
-      4, 19,  -4, -10, -10,  10,  11, -8,  19, -10, 
-     -4, 19, -10, -10,  -4
+    -10, 0, -10, -1, 19, -10, -10, -2, -10, -10, 4, 19, -4, -10, -10, 10, 11,
+    -8, 19, -10, -4, 19, -10, -10, -4,
   ];
 
   private readonly _defact = [
-    4, 0, 1, 0, 0, 2, 3, 0, 9, 8, 0, 0, 7, 10, 11, 0, 0, 0, 0, 6, 5, 0, 12, 14, 13,
+    4, 0, 1, 0, 0, 2, 3, 0, 9, 8, 0, 0, 7, 10, 11, 0, 0, 0, 0, 6, 5, 0, 12, 14,
+    13,
   ];
 
   private readonly _pgoto = [-10, -10, -10, 1, -9, -10, -10];
@@ -283,15 +294,13 @@ export class YYParser {
 
   private readonly _table_ninf = -1;
   private readonly _table = [
-    2, 22, 17, 7, 18, 15, 20, 16, 18, 23,
-    3,  4, 24, 8,  9, 10, 19, 21, 11,  0,
-    0,  4,  8, 9, 10,  0,  0, 11,
+    2, 22, 17, 7, 18, 15, 20, 16, 18, 23, 3, 4, 24, 8, 9, 10, 19, 21, 11, 0, 0,
+    4, 8, 9, 10, 0, 0, 11,
   ];
 
   private readonly _check = [
-     0,  9, 11, 4, 12,  7, 15, 3, 12, 18, 
-    10, 11, 21, 3,  4,  5, 15, 6,  8, -1,
-    -1, 11,  3, 4,  5, -1, -1, 8,
+    0, 9, 11, 4, 12, 7, 15, 3, 12, 18, 10, 11, 21, 3, 4, 5, 15, 6, 8, -1, -1,
+    11, 3, 4, 5, -1, -1, 8,
   ];
 
   private readonly _r1 = [
@@ -301,33 +310,17 @@ export class YYParser {
   private readonly _r2 = [0, 2, 2, 2, 0, 4, 4, 2, 1, 1, 1, 1, 3, 4, 3];
 
   private readonly _translateTable = [
-    0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 1, 2, 3, 4, 
-    5, 6, 7, 8, 9, 10, 11, 12
+    0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
   ];
 
   private _translate(tokenNumber: number) {
@@ -356,7 +349,7 @@ export class YYParser {
     rBracket: 264,
     let: 265,
     eval: 266,
-    apply: 267
+    apply: 267,
   };
 }
 

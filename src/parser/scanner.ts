@@ -81,7 +81,7 @@ const isIdentifierChar = (ch: string) => {
 };
 
 const peek = (scanner: Scanner) => {
-  return scanner.source[scanner.index];
+  return !isEnd(scanner) ? scanner.source[scanner.index] : eof;
 };
 
 const peekNext = (scanner: Scanner) => {
@@ -190,6 +190,9 @@ export const scanToken = (scanner: Scanner) => {
       break;
     case '<':
       token = newToken(TokenKind.Apply, scanner);
+      break;
+    case eof:
+      token = newToken(TokenKind.EOF, scanner);
       break;
     default:
       return {
