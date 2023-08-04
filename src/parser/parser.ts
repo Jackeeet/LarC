@@ -1,5 +1,8 @@
 import {Scanner, initScanner, scanToken} from './scanner';
-import {TokenKind, startToken} from './token';
+import {Token, TokenKind, startToken} from './token';
+import {Expression, Identifier, Variable, Previous, previous} from '../types/expression';
+import {Instruction} from '../types/instruction';
+import {SymbolTable} from '../types/symbolTable';
 
 enum ActionResult {
   Accept = 0,
@@ -13,30 +16,14 @@ enum ActionResult {
   Return = 8,
 }
 
-export type InstructionPointer = string;
-const toInstPointer = (n: number) => `i${n}`;
-
-export type Identifier = string;
-export type Variable = string;
-export type Expression = Identifier | Variable;
-
-export type Instruction = {
-  op: 'assign' | 'eval' | 'print' | 'apply' | 'func';
-  arg1: Expression | InstructionPointer;
-  arg2: Expression | InstructionPointer | null;
-};
-
 export class YYParser {
-  public symTable: {[key: Identifier]: Expression | InstructionPointer};
+  public symTable: SymbolTable;
   public instructions: Instruction[];
 
   private _scanner: Scanner;
   private _errStatus = 0;
 
-  constructor(
-    source: string,
-    symTable: {[key: Identifier]: Expression | InstructionPointer}
-  ) {
+  constructor(source: string, symTable: SymbolTable) {
     this._scanner = initScanner(source);
     this.symTable = symTable;
     this.instructions = [];
@@ -49,33 +36,27 @@ export class YYParser {
   }
 
   private _declareGlobal(identifier: Identifier, expr: Expression) {
-    if (identifier === null) throw new Error('Unreachable: null identifier');
+    if (identifier.value === null) throw new Error('Unreachable: null identifier');
 
-    this.symTable[identifier] = expr;
+    this.symTable[identifier.value] = expr;
     this.instructions.push({op: 'assign', arg1: expr, arg2: identifier});
   }
 
-  private _makeFunc(bound: Variable, body: Expression): InstructionPointer {
+  private _makeFunc(bound: Variable, body: Expression): Previous {
     if (bound === null) throw new Error('Unreachable: null bound value');
 
-    const ptr = toInstPointer(this.instructions.length);
     this.instructions.push({op: 'func', arg1: bound, arg2: body});
-    return ptr;
+    return previous;
   }
 
-  private _makeApplication(
-    applied: Expression,
-    applicand: Expression
-  ): InstructionPointer {
-    const ptr = toInstPointer(this.instructions.length);
+  private _makeApplication(applied: Expression, applicand: Expression): Previous {
     this.instructions.push({op: 'apply', arg1: applied, arg2: applicand});
-    return ptr;
+    return previous;
   }
 
-  private _declareEval(expr: Expression): InstructionPointer {
-    const ptr = toInstPointer(this.instructions.length);
+  private _declareEval(expr: Expression): Previous {
     this.instructions.push({op: 'eval', arg1: expr, arg2: null});
-    return ptr;
+    return previous;
   }
 
   private _handlePrint(value: Expression) {
@@ -83,7 +64,7 @@ export class YYParser {
   }
 
   private _action(yyn: number, stack: YYStack, len: number) {
-    let val: Expression | InstructionPointer | null = stack.valueAt(
+    let val: Expression | null = stack.valueAt(
       len > 0 ? len - 1 : 0
     );
     switch (yyn) {
@@ -97,7 +78,7 @@ export class YYParser {
       case 5:
       case 6: {
         // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
-        const identifier = <Identifier>stack.valueAt(2);
+        const identifier = stack.valueAt(2) as Identifier;
         if (identifier === null)
           throw new Error('Unreachable: null identifier');
         const expression = stack.valueAt(0);
@@ -120,7 +101,7 @@ export class YYParser {
         break;
       case 13: {
         // function : LAMBDA NAME DOT expression
-        const variable = <Variable>stack.valueAt(2);
+        const variable = stack.valueAt(2) as Variable;
         if (variable === null)
           throw new Error('Unreachable: null variable name');
         const expression = stack.valueAt(0);
@@ -153,7 +134,8 @@ export class YYParser {
       state <= this._last &&
       this._check[state] === stack.stateAt(0);
     state = condition ? this._table[state] : this._defgoto[yyn - this._nTokens];
-    stack.push(state, val);
+    
+    stack.push(state, typeof val === "string" ? ({value: val}) : val);
     return ActionResult.NewState;
   }
 
@@ -167,7 +149,7 @@ export class YYParser {
     const stack = new YYStack();
     this._errStatus = 0;
 
-    stack.push(state, token.value);
+    stack.push(state, this._tokenToExpression(token));
     let label = ActionResult.NewState;
     while (true) {
       switch (label) {
@@ -214,7 +196,7 @@ export class YYParser {
             }
 
             state = yyn;
-            stack.push(state, token.value);
+            stack.push(state, this._tokenToExpression(token));
             label = ActionResult.NewState;
           }
           break;
@@ -266,7 +248,7 @@ export class YYParser {
           }
 
           state = yyn;
-          stack.push(yyn, token.value);
+          stack.push(yyn, this._tokenToExpression(token));
           label = ActionResult.NewState;
           break;
         case ActionResult.Accept:
@@ -275,6 +257,10 @@ export class YYParser {
           return false;
       }
     }
+  }
+
+  private _tokenToExpression(token: Token) {
+    return token.value === null ? null : {value: token.value};
   }
 
   private readonly _pact_ninf = -10;
@@ -355,11 +341,11 @@ export class YYParser {
 
 class YYStack {
   private _stateStack: number[] = [];
-  private _valueStack: (string | null)[] = [];
+  private _valueStack: (Expression | null)[] = [];
 
   public height = -1;
 
-  public push(state: number, value: string | null) {
+  public push(state: number, value: Expression | null) {
     this._stateStack.push(state);
     this._valueStack.push(value);
     this.height += 1;

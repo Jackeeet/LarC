@@ -1,10 +1,7 @@
-import {
-  YYParser,
-  Instruction,
-  Identifier,
-  Expression,
-  InstructionPointer,
-} from './parser/parser';
+import {YYParser} from './parser/parser';
+import {Instruction} from './types/instruction';
+import {Identifier, Expression} from './types/expression';
+import {SymbolTable} from './types/symbolTable';
 
 const parse = (source: string) => {
   const symTable = {};
@@ -47,16 +44,14 @@ const setInstructionRows = (instructions: Instruction[]) => {
     const row = document.createElement('tr');
     row.appendChild(createCell(rowCount));
     row.appendChild(createCell(i.op));
-    row.appendChild(createCell(JSON.stringify(i.arg1)));
-    row.appendChild(createCell(JSON.stringify(i.arg2)));
+    row.appendChild(createCell(i.arg1.value));
+    row.appendChild(createCell(i.arg2?.value ?? ""));
     instructionsTable.appendChild(row);
     rowCount += 1;
   });
 };
 
-const setSymbolRows = (symbols: {
-  [key: Identifier]: Expression | InstructionPointer;
-}) => {
+const setSymbolRows = (symbols: SymbolTable) => {
   Object.entries(symbols).forEach(s => {
     const row = document.createElement('tr');
     row.appendChild(createCell(s[0]));
