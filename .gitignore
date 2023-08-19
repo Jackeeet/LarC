@@ -49,3 +49,5 @@ bundle.js
 .eslintrc.json
 .prettierrc.js
 index.html
+
+comp.sh

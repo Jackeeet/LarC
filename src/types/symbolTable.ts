@@ -1,3 +1,5 @@
-import {Expression} from './expression';
+import {GeneralExpression} from './expression';
 
-export type SymbolTable = {[key: string]: Expression};
+export type SymbolTable = {
+  [key: string]: GeneralExpression;
+};

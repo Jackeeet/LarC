@@ -1,8 +1,9 @@
 import {Scanner, initScanner, scanToken} from './scanner';
 import {Token, TokenKind, startToken} from './token';
-import {Expression, Identifier, Variable, Previous, previous} from '../types/expression';
+import * as err from './errors';
 import {Instruction} from '../types/instruction';
 import {SymbolTable} from '../types/symbolTable';
+import * as e from '../types/expression';
 
 enum ActionResult {
   Accept = 0,
@@ -35,91 +36,114 @@ export class YYParser {
     return token;
   }
 
-  private _declareGlobal(identifier: Identifier, expr: Expression) {
-    if (identifier.value === null) throw new Error('Unreachable: null identifier');
+  private _declareGlobal(identifier: e.Identifier, expr: e.GeneralExpression) {
+    if (identifier.value === null) err.throwUnreachable(err.NULL_ID);
 
     this.symTable[identifier.value] = expr;
     this.instructions.push({op: 'assign', arg1: expr, arg2: identifier});
   }
 
-  private _makeFunc(bound: Variable, body: Expression): Previous {
-    if (bound === null) throw new Error('Unreachable: null bound value');
+  private _makeFunc(bound: e.Variable, body: e.GeneralExpression): e.Func {
+    if (bound === null) err.throwUnreachable(err.NULL_VAR);
 
     this.instructions.push({op: 'func', arg1: bound, arg2: body});
-    return previous;
+    return {value: 'func', body: body, sub: bound};
   }
 
-  private _makeApplication(applied: Expression, applicand: Expression): Previous {
+  private _makeApplication(
+    applied: e.GeneralExpression,
+    applicand: e.GeneralExpression
+  ): e.Application {
     this.instructions.push({op: 'apply', arg1: applied, arg2: applicand});
-    return previous;
+    return {value: 'application', applied: applied, applicand: applicand};
   }
 
-  private _declareEval(expr: Expression): Previous {
+  private _declareEval(expr: e.Expression): e.Expression {
     this.instructions.push({op: 'eval', arg1: expr, arg2: null});
-    return previous;
+    return expr;
   }
 
-  private _handlePrint(value: Expression) {
+  private _handlePrint(value: e.Expression) {
     this.instructions.push({op: 'print', arg1: value, arg2: null});
   }
 
-  private _action(yyn: number, stack: YYStack, len: number) {
-    let val: Expression | null = stack.valueAt(
-      len > 0 ? len - 1 : 0
+  private _parseDeclaration(stack: YYStack) {
+    // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
+    const identifier = stack.valueAt(2) as e.Identifier;
+    const expression = stack.valueAt(0);
+
+    if (identifier === null) err.throwUnreachable(err.NULL_ID);
+    if (expression === null) err.throwUnreachable(err.NULL_ASSIGN);
+    if (e.isIdentifier(expression!)) err.throwUnreachable(err.ID_NOT_EXPANDED);
+
+    this._declareGlobal(identifier, expression as e.GeneralExpression);
+  }
+
+  private _parseFunc(stack: YYStack) {
+    // function : LAMBDA NAME DOT expression
+    const variable = stack.valueAt(2) as e.Variable;
+    const expression = stack.valueAt(0);
+
+    if (variable === null) err.throwUnreachable(err.NULL_VAR);
+    if (expression === null) err.throwUnreachable(err.NULL_FUNC_BODY);
+    if (e.isIdentifier(expression!)) err.throwUnreachable(err.ID_NOT_EXPANDED);
+
+    return this._makeFunc(variable, expression as e.GeneralExpression);
+  }
+
+  private _parseApplication(stack: YYStack) {
+    // application : expression APPLY expression
+    const applied = stack.valueAt(2);
+    const applicand = stack.valueAt(0);
+
+    if (applied === null) err.throwUnreachable(err.NULL_APPLIED);
+    if (applicand === null) err.throwUnreachable(err.NULL_APPLICAND);
+    if (e.isIdentifier(applied!) || e.isIdentifier(applicand!)) {
+      err.throwUnreachable(err.ID_NOT_EXPANDED);
+    }
+
+    return this._makeApplication(
+      applied as e.GeneralExpression,
+      applicand as e.GeneralExpression
     );
+  }
+
+  private _action(yyn: number, stack: YYStack, len: number) {
+    let val: e.Expression | null = stack.valueAt(len > 0 ? len - 1 : 0);
     switch (yyn) {
-      case 3: {
-        const value = <Expression>stack.valueAt(0);
-        if (value === null)
-          throw new Error('Unreachable: printing null value');
+      case 3:
+        const value = stack.valueAt(0) as e.Expression;
+        if (value === null) err.throwUnreachable(err.NULL_PRINT);
         this._handlePrint(value);
         break;
-      }
       case 5:
-      case 6: {
-        // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
-        const identifier = stack.valueAt(2) as Identifier;
-        if (identifier === null)
-          throw new Error('Unreachable: null identifier');
-        const expression = stack.valueAt(0);
-        if (expression === null)
-          throw new Error('Unreachable: null expression in assignment');
-        this._declareGlobal(identifier, expression);
+      case 6:
+        this._parseDeclaration(stack);
         break;
-      }
-      case 7: {
-        // evaluation : EVAL expression
+      case 7: // evaluation : EVAL expression
         const expression = stack.valueAt(0);
-        if (expression === null)
-          throw new Error('Unreachable: null expression in eval');
-        val = this._declareEval(expression);
+        if (expression === null) err.throwUnreachable(err.NULL_EVAL);
+        val = this._declareEval(expression!);
         break;
-      }
-      case 12:
-        // expression : LBRACKET expression RBRACKET
+      case 8: // expression : IDENTIFIER
+        const identifier = stack.valueAt(0);
+        if (identifier === null) err.throwUnreachable(err.NULL_ID);
+        val = this.symTable[identifier!.value];
+        break;
+      case 9: // expression : NAME
+        const variable = stack.valueAt(0);
+        if (variable === null) err.throwUnreachable(err.NULL_VAR);
+        val = e.toVariable(variable!);
+        break;
+      case 12: // expression : LBRACKET expression RBRACKET
         val = stack.valueAt(1);
         break;
-      case 13: {
-        // function : LAMBDA NAME DOT expression
-        const variable = stack.valueAt(2) as Variable;
-        if (variable === null)
-          throw new Error('Unreachable: null variable name');
-        const expression = stack.valueAt(0);
-        if (expression === null)
-          throw new Error('Unreachable: null expression in function body');
-        val = this._makeFunc(variable, expression);
+      case 13:
+        val = this._parseFunc(stack);
         break;
-      }
-      case 14: {
-        // application : expression APPLY expression
-        const applied = stack.valueAt(2);
-        if (applied === null)
-          throw new Error('Unreachable: null applied expression');
-        const applicand = stack.valueAt(0);
-        if (applicand === null) throw new Error('Unreachable: null applicand');
-        val = this._makeApplication(applied, applicand);
+      case 14:
+        val = this._parseApplication(stack);
         break;
-      }
       default:
         break;
     }
@@ -134,8 +158,8 @@ export class YYParser {
       state <= this._last &&
       this._check[state] === stack.stateAt(0);
     state = condition ? this._table[state] : this._defgoto[yyn - this._nTokens];
-    
-    stack.push(state, typeof val === "string" ? ({value: val}) : val);
+
+    stack.push(state, typeof val === 'string' ? {value: val} : val);
     return ActionResult.NewState;
   }
 
@@ -341,11 +365,11 @@ export class YYParser {
 
 class YYStack {
   private _stateStack: number[] = [];
-  private _valueStack: (Expression | null)[] = [];
+  private _valueStack: (e.Expression | null)[] = [];
 
   public height = -1;
 
-  public push(state: number, value: Expression | null) {
+  public push(state: number, value: e.Expression | null) {
     this._stateStack.push(state);
     this._valueStack.push(value);
     this.height += 1;

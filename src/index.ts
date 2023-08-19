@@ -1,4 +1,5 @@
 import {YYParser} from './parser/parser';
+import {Compiler, initCompiler, compile} from './compiler/compiler';
 import {Instruction} from './types/instruction';
 import {Identifier, Expression} from './types/expression';
 import {SymbolTable} from './types/symbolTable';
@@ -23,9 +24,9 @@ const parseResultArea = tryGetDOMElement('parse-result');
 const instructionsTable = tryGetDOMElement('instructions-table');
 const symbolTable = tryGetDOMElement('symbol-table');
 
-parseButton.onclick = (_: any) => parseDoc();
+parseButton.onclick = (_: any) => compileDoc();
 
-const parseDoc = () => {
+const compileDoc = () => {
   const source = inputArea.value;
   const {success, instructions, table} = parse(source);
 
@@ -36,6 +37,9 @@ const parseDoc = () => {
 
   setInstructionRows(instructions);
   setSymbolRows(table);
+
+  const compiler = initCompiler(table);
+  compile(compiler, instructions);
 };
 
 const setInstructionRows = (instructions: Instruction[]) => {

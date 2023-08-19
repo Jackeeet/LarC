@@ -3,18 +3,35 @@ export interface Expression {
 }
 
 export type Identifier = Expression & {isId: boolean};
-export const isIdentifier = (expr: Expression): expr is Identifier => {
-  return (expr as Identifier).isId;
-};
+export const toIdentifier = (expr: Expression) => ({
+  value: expr.value,
+  isId: true,
+});
+export const isIdentifier = (expr: Expression): expr is Identifier =>
+  (expr as Identifier).isId;
+
+export type GeneralExpression = Variable | Func | Application;
 
 export type Variable = Expression & {isVar: boolean};
-export const isVariable = (expr: Expression): expr is Variable => {
-  return (expr as Variable).isVar;
-};
+export const toVariable = (expr: Expression) => ({
+  value: expr.value,
+  isVar: true,
+});
+export const isVariable = (expr: Expression): expr is Variable =>
+  (expr as Variable).isVar;
 
-export type Previous = Expression & {isPrevious: boolean};
-export const isPrevious = (expr: Expression): expr is Previous => {
-  return (expr as Previous).isPrevious;
+export type Func = Expression & {
+  body: GeneralExpression;
+  sub: Variable;
 };
+export const isFunc = (expr: any): expr is Func =>
+  (expr as Func).body !== undefined && (expr as Func).sub !== undefined;
 
-export const previous = {value: '$', isPrevious: true};
+
+export type Application = Expression & {
+  applied: GeneralExpression;
+  applicand: GeneralExpression;
+};
+export const isApplication = (expr: any): expr is Application =>
+  (expr as Application).applied !== undefined &&
+  (expr as Application).applicand !== undefined;
