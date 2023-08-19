@@ -1,9 +1,9 @@
 import {Scanner, initScanner, scanToken} from './scanner';
 import {Token, TokenKind, startToken} from './token';
-import * as err from './errors';
 import {Instruction} from '../types/instruction';
 import {SymbolTable} from '../types/symbolTable';
-import * as e from '../types/expression';
+import * as exp from '../types/expression';
+import * as err from '../errors';
 
 enum ActionResult {
   Accept = 0,
@@ -36,14 +36,20 @@ export class YYParser {
     return token;
   }
 
-  private _declareGlobal(identifier: e.Identifier, expr: e.GeneralExpression) {
+  private _declareGlobal(
+    identifier: exp.Identifier,
+    expr: exp.GeneralExpression
+  ) {
     if (identifier.value === null) err.throwUnreachable(err.NULL_ID);
 
     this.symTable[identifier.value] = expr;
     this.instructions.push({op: 'assign', arg1: expr, arg2: identifier});
   }
 
-  private _makeFunc(bound: e.Variable, body: e.GeneralExpression): e.Func {
+  private _makeFunc(
+    bound: exp.Variable,
+    body: exp.GeneralExpression
+  ): exp.Func {
     if (bound === null) err.throwUnreachable(err.NULL_VAR);
 
     this.instructions.push({op: 'func', arg1: bound, arg2: body});
@@ -51,44 +57,48 @@ export class YYParser {
   }
 
   private _makeApplication(
-    applied: e.GeneralExpression,
-    applicand: e.GeneralExpression
-  ): e.Application {
+    applied: exp.GeneralExpression,
+    applicand: exp.GeneralExpression
+  ): exp.Application {
     this.instructions.push({op: 'apply', arg1: applied, arg2: applicand});
     return {value: 'application', applied: applied, applicand: applicand};
   }
 
-  private _declareEval(expr: e.Expression): e.Expression {
+  private _declareEval(expr: exp.Expression): exp.Expression {
     this.instructions.push({op: 'eval', arg1: expr, arg2: null});
     return expr;
   }
 
-  private _handlePrint(value: e.Expression) {
+  private _handlePrint(value: exp.Expression) {
     this.instructions.push({op: 'print', arg1: value, arg2: null});
   }
 
   private _parseDeclaration(stack: YYStack) {
     // declaration : LET IDENTIFIER EQUALS (expression | evaluation)
-    const identifier = stack.valueAt(2) as e.Identifier;
+    const identifier = stack.valueAt(2) as exp.Identifier;
     const expression = stack.valueAt(0);
 
     if (identifier === null) err.throwUnreachable(err.NULL_ID);
     if (expression === null) err.throwUnreachable(err.NULL_ASSIGN);
-    if (e.isIdentifier(expression!)) err.throwUnreachable(err.ID_NOT_EXPANDED);
+    if (exp.isIdentifier(expression!)) {
+      err.throwUnreachable(err.ID_NOT_EXPANDED);
+    }
 
-    this._declareGlobal(identifier, expression as e.GeneralExpression);
+    this._declareGlobal(identifier, expression as exp.GeneralExpression);
   }
 
   private _parseFunc(stack: YYStack) {
     // function : LAMBDA NAME DOT expression
-    const variable = stack.valueAt(2) as e.Variable;
+    const variable = stack.valueAt(2) as exp.Variable;
     const expression = stack.valueAt(0);
 
     if (variable === null) err.throwUnreachable(err.NULL_VAR);
     if (expression === null) err.throwUnreachable(err.NULL_FUNC_BODY);
-    if (e.isIdentifier(expression!)) err.throwUnreachable(err.ID_NOT_EXPANDED);
+    if (exp.isIdentifier(expression!)) {
+      err.throwUnreachable(err.ID_NOT_EXPANDED);
+    }
 
-    return this._makeFunc(variable, expression as e.GeneralExpression);
+    return this._makeFunc(variable, expression as exp.GeneralExpression);
   }
 
   private _parseApplication(stack: YYStack) {
@@ -98,21 +108,21 @@ export class YYParser {
 
     if (applied === null) err.throwUnreachable(err.NULL_APPLIED);
     if (applicand === null) err.throwUnreachable(err.NULL_APPLICAND);
-    if (e.isIdentifier(applied!) || e.isIdentifier(applicand!)) {
+    if (exp.isIdentifier(applied!) || exp.isIdentifier(applicand!)) {
       err.throwUnreachable(err.ID_NOT_EXPANDED);
     }
 
     return this._makeApplication(
-      applied as e.GeneralExpression,
-      applicand as e.GeneralExpression
+      applied as exp.GeneralExpression,
+      applicand as exp.GeneralExpression
     );
   }
 
   private _action(yyn: number, stack: YYStack, len: number) {
-    let val: e.Expression | null = stack.valueAt(len > 0 ? len - 1 : 0);
+    let val: exp.Expression | null = stack.valueAt(len > 0 ? len - 1 : 0);
     switch (yyn) {
       case 3:
-        const value = stack.valueAt(0) as e.Expression;
+        const value = stack.valueAt(0) as exp.Expression;
         if (value === null) err.throwUnreachable(err.NULL_PRINT);
         this._handlePrint(value);
         break;
@@ -133,7 +143,7 @@ export class YYParser {
       case 9: // expression : NAME
         const variable = stack.valueAt(0);
         if (variable === null) err.throwUnreachable(err.NULL_VAR);
-        val = e.toVariable(variable!);
+        val = exp.toVariable(variable!);
         break;
       case 12: // expression : LBRACKET expression RBRACKET
         val = stack.valueAt(1);
@@ -365,11 +375,11 @@ export class YYParser {
 
 class YYStack {
   private _stateStack: number[] = [];
-  private _valueStack: (e.Expression | null)[] = [];
+  private _valueStack: (exp.Expression | null)[] = [];
 
   public height = -1;
 
-  public push(state: number, value: e.Expression | null) {
+  public push(state: number, value: exp.Expression | null) {
     this._stateStack.push(state);
     this._valueStack.push(value);
     this.height += 1;
